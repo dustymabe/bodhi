@@ -236,7 +236,7 @@ class ExtendedMetadata(object):
 
                 # Build the URL
                 if rpm['arch'] == 'src':
-                    arch = 'SRPMS'
+                    arch = 'source'
                 elif rpm['arch'] in ('noarch', 'i686'):
                     arch = 'i386'
                 else:
@@ -279,8 +279,12 @@ class ExtendedMetadata(object):
 
     def modifyrepo(self, filename):
         """Inject a file into the repodata for each architecture"""
-        for arch in os.listdir(self.repo_path):
-            repodata = os.path.join(self.repo_path, arch, 'repodata')
+        repo_path = os.path.join(self.repo_path, 'compose', 'Everything')
+        for arch in os.listdir(repo_path)
+            if arch is 'source':
+                repodata = os.path.join(repo_path, arch, 'tree', 'repodata')
+            else:
+                repodata = os.path.join(repo_path, arch, 'os', 'repodata')
             log.info('Inserting %s into %s', filename, repodata)
             uinfo_xml = os.path.join(repodata, 'updateinfo.xml')
             shutil.copyfile(filename, uinfo_xml)
@@ -296,8 +300,12 @@ class ExtendedMetadata(object):
             os.unlink(uinfo_xml)
 
     def cache_repodata(self):
-        arch = os.listdir(self.repo_path)[0]  # Take the first arch
-        repodata = os.path.join(self.repo_path, arch, 'repodata')
+        repo_path = os.path.join(self.repo_path, 'compose', 'Everything')
+        arch = os.listdir(repo_path)[0]  # Take the first arch
+        if arch is 'source':
+            repodata = os.path.join(repo_path, arch, 'tree', 'repodata')
+        else:
+            repodata = os.path.join(repo_path, arch, 'os', 'repodata')
         if not os.path.isdir(repodata):
             log.warning('Cannot find repodata to cache: %s' % repodata)
             return

@@ -343,29 +343,29 @@ class MasherThread(threading.Thread):
                 self.stage_repo()
 
                 # Wait for the repo to hit the master mirror
-                self.wait_for_sync()
+     #          self.wait_for_sync()
 
-            # Send fedmsg notifications
-            self.send_notifications()
+     #      # Send fedmsg notifications
+     #      self.send_notifications()
 
-            # Update bugzillas
-            self.modify_bugs()
+     #      # Update bugzillas
+     #      self.modify_bugs()
 
-            # Add comments to updates
-            self.status_comments()
+     #      # Add comments to updates
+     #      self.status_comments()
 
-            # Announce stable updates to the mailing list
-            self.send_stable_announcements()
+     #      # Announce stable updates to the mailing list
+     #      self.send_stable_announcements()
 
-            # Email updates-testing digest
-            self.send_testing_digest()
+     #      # Email updates-testing digest
+     #      self.send_testing_digest()
 
-            self.success = True
-            self.remove_state()
-            self.unlock_updates()
+     #      self.success = True
+     #      self.remove_state()
+     #      self.unlock_updates()
 
-            self.check_all_karma_thresholds()
-            self.obsolete_older_updates()
+     #      self.check_all_karma_thresholds()
+     #      self.obsolete_older_updates()
 
         except:
             self.log.exception('Exception in MasherThread(%s)' % self.id)
@@ -639,6 +639,18 @@ class MasherThread(threading.Thread):
 
         util.cmd(['git', 'pull'], comps_dir)
         util.cmd(['make'], comps_dir)
+
+    def git_clone(self, git_url, git_branch, target_dir):
+        """
+        git clone a repo into a target directory and checkout
+        specified branch
+        """
+        self.log.info("Git clone of: %s" % git_url)
+
+        util.cmd(['git', 'clone', git_url, target_dir],
+                 os.path.dirname(target_dir))
+
+        util.cmd(['git', 'checkout', git_branch], target_dir)
 
     def mash(self):
         if self.path in self.state['completed_repos']:
@@ -1038,11 +1050,15 @@ class MashThread(threading.Thread):
                                             compsfile=comps, tag=self.tag).split()
 
         else:  # We are going to use pungi in this run
-            pungi_cmd = "pungi-koji  --config={config} --old-composes={outputdir}"
-            pungi_cmd += " --target-dir={outputdir}"
+            # old composes are in the previous directory
+#           self.git_clone(git_url=, git_branch=self.tag, target_dir=)
+            lastcompose = os.path.join(outputdir, '..', tag)
+            pungi_cmd = "pungi-koji  --config={config} --old-composes={lastcompose}"
+            pungi_cmd += "--no-label --target-dir={outputdir}"
             pungi_conf = config.get('pungi_conf')
-            # We are using the same name so that no new changes required in th code
-            self.mash_cmd = pungi_cmd.format(config=pungi_conf, outputdir=outputdir)
+            # We are using the same name so that no new changes required in the code
+            self.mash_cmd = pungi_cmd.format(config=pungi_conf, outputdir=outputdir
+                                             lastcompose=lastcompose)
         # Set our thread's "name" so it shows up nicely in the logs.
         # https://docs.python.org/2/library/threading.html#thread-objects
         self.name = tag
