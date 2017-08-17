@@ -272,6 +272,8 @@ class MasherThread(threading.Thread):
         self.release = self.db.query(Release)\
                               .filter_by(name=self.release).one()
         self.id = getattr(self.release, '%s_tag' % self.request.value)
+        #'f26-updates' => Fedora-Updates-26
+        #'f26-updates-testing' => Fedora-Updates-Testing-26
 
         # Set our thread's "name" so it shows up nicely in the logs.
         # https://docs.python.org/2/library/threading.html#thread-objects
@@ -288,8 +290,8 @@ class MasherThread(threading.Thread):
 
         self.log.info('Running MasherThread(%s)' % self.id)
         self.init_state()
-        if not self.resume:
-            self.init_path()
+      # if not self.resume:
+      #     self.init_path()
 
         notifications.publish(
             topic="mashtask.mashing",
@@ -467,12 +469,12 @@ class MasherThread(threading.Thread):
             force=True,
         )
 
-    def init_path(self):
-        self.path = os.path.join(self.mash_dir, self.id + '-' +
-                                 time.strftime("%y%m%d.%H%M"))
-        if not os.path.isdir(self.path):
-            os.makedirs(self.path)
-            self.log.info('Creating new mash: %s' % self.path)
+  ##def init_path(self):
+  ##    self.path = os.path.join(self.mash_dir, self.id + '-' +
+  ##                             time.strftime("%y%m%d.%H%M"))
+  ##    if not os.path.isdir(self.path):
+  ##        os.makedirs(self.path)
+  ##        self.log.info('Creating new mash: %s' % self.path)
 
     def init_state(self):
         if not os.path.exists(self.mash_dir):
@@ -506,7 +508,7 @@ class MasherThread(threading.Thread):
                 self.log.info('Resuming push with completed repo: %s' % self.path)
                 return
         self.log.info('Resuming push without any completed repos')
-        self.init_path()
+       #self.init_path()
 
     def remove_state(self):
         self.log.info('Removing state: %s', self.mash_lock)
@@ -661,7 +663,7 @@ class MasherThread(threading.Thread):
                              self.release.branch)
         previous = os.path.join(config.get('mash_stage_dir'), self.id)
 
-        mash_thread = MashThread(self.id, self.path, comps, previous, self.log)
+        mash_thread = MashThread(self.id, self.mash_dir, comps, previous, self.log)
         mash_thread.start()
         return mash_thread
 
@@ -672,6 +674,9 @@ class MasherThread(threading.Thread):
         self.log.debug('Waiting for mash thread to finish')
         mash_thread.join()
         if mash_thread.success:
+            # Find the path of our repo that pungi just created
+            pungi_latest_link_name = 'latest-%s-%s'.format(self.id, self.release)
+            self.path = os.readlink(os.path.join(self.mash_dir, pungi_latest_link_name)
             self.state['completed_repos'].append(self.path)
             self.save_state()
         else:
@@ -721,19 +726,25 @@ class MasherThread(threading.Thread):
             - make sure we didn't compose a repo full of symlinks
             - sanity check our repodata
         """
-        mash_path = os.path.join(self.path, self.id)
-        self.log.info("Running sanity checks on %s" % mash_path)
+        self.log.info("Running sanity checks on %s" % self.path)
 
         # sanity check our repodata
-        arches = os.listdir(mash_path)
+        arches = os.listdir(self.path, 'compose', 'Everything')
         for arch in arches:
             try:
-                repodata = os.path.join(mash_path, arch, 'repodata')
+                if arch is 'source':
+                    repodata = os.path.join(self.path, 'compose',
+                                            'Everything', arch, 'tree', 'repodata')
+                else:
+                    repodata = os.path.join(self.path, 'compose',
+                                            'Everything', arch, 'os', 'repodata')
                 sanity_check_repodata(repodata)
             except Exception, e:
                 self.log.error("Repodata sanity check failed!\n%s" % str(e))
                 raise
 
+        # pretty sure the below code is broken today as the directory it is looking at just contains directories.
+        # https://kojipkgs.fedoraproject.org/mash//updates/f26-updates-170804.1348/f26-updates/armhfp/
         # make sure that mash didn't symlink our packages
         for pkg in os.listdir(os.path.join(mash_path, arches[0])):
             if pkg.endswith('.rpm'):
@@ -1052,13 +1063,14 @@ class MashThread(threading.Thread):
         else:  # We are going to use pungi in this run
             # old composes are in the previous directory
 #           self.git_clone(git_url=, git_branch=self.tag, target_dir=)
-            lastcompose = os.path.join(outputdir, '..', tag)
-            pungi_cmd = "pungi-koji  --config={config} --old-composes={lastcompose}"
+            #lastcompose = os.path.join(outputdir, '..', tag)
+            #pungi_cmd = "pungi-koji  --config={config} --old-composes={lastcompose} "
+            pungi_cmd = "pungi-koji  --config={config} "
             pungi_cmd += "--no-label --target-dir={outputdir}"
             pungi_conf = config.get('pungi_conf')
             # We are using the same name so that no new changes required in the code
-            self.mash_cmd = pungi_cmd.format(config=pungi_conf, outputdir=outputdir
-                                             lastcompose=lastcompose)
+            self.mash_cmd = pungi_cmd.format(config=pungi_conf, outputdir=outputdir)
+#                                            lastcompose=lastcompose)
         # Set our thread's "name" so it shows up nicely in the logs.
         # https://docs.python.org/2/library/threading.html#thread-objects
         self.name = tag

@@ -44,7 +44,8 @@ class ExtendedMetadata(object):
             self.tag = release.stable_tag
         else:
             self.tag = release.testing_tag
-        self.repo_path = os.path.join(self.repo, self.tag)
+#       self.repo_path = os.path.join(self.repo, self.tag)
+        self.repo_path = self.repo
 
         self.db = db
         self.updates = set()
@@ -280,7 +281,7 @@ class ExtendedMetadata(object):
     def modifyrepo(self, filename):
         """Inject a file into the repodata for each architecture"""
         repo_path = os.path.join(self.repo_path, 'compose', 'Everything')
-        for arch in os.listdir(repo_path)
+        for arch in os.listdir(repo_path):
             if arch is 'source':
                 repodata = os.path.join(repo_path, arch, 'tree', 'repodata')
             else:
