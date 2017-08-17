@@ -655,7 +655,7 @@ class MasherThread(threading.Thread):
         util.cmd(['git', 'checkout', git_branch], target_dir)
 
     def mash(self):
-        if self.path in self.state['completed_repos']:
+        if self.path and self.path in self.state['completed_repos']:
             self.log.info('Skipping completed repo: %s', self.path)
             return
 
@@ -676,7 +676,7 @@ class MasherThread(threading.Thread):
         if mash_thread.success:
             # Find the path of our repo that pungi just created
             pungi_latest_link_name = 'latest-%s-%s'.format(self.id, self.release)
-            self.path = os.readlink(os.path.join(self.mash_dir, pungi_latest_link_name)
+            self.path = os.readlink(os.path.join(self.mash_dir, pungi_latest_link_name))
             self.state['completed_repos'].append(self.path)
             self.save_state()
         else:
